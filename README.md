@@ -18,6 +18,7 @@ similar snippets.
 - **sentence-transformers** (`all-MiniLM-L6-v2`) – 384-dimensional text embeddings
 - **FAISS** (`faiss-cpu`) – vector index and similarity search
 - **NumPy** – array handling for index operations
+- **SQLAlchemy** + **SQLite** – document store for code chunk metadata
 - **Uvicorn** – ASGI server
 
 ## Project structure
@@ -28,6 +29,8 @@ app/
   main.py           # FastAPI app and /health endpoint
   embeddings.py     # embedding + similarity helpers
   vector_index.py   # FAISS index: add and search vectors
+  db.py             # SQLAlchemy engine/session setup
+  models.py         # CodeChunk ORM model
 requirements.txt
 ```
 
@@ -62,6 +65,19 @@ requirements.txt
   as `{"id", "score"}` entries, skipping empty (`-1`) slots.
 - Implemented `get_index_size()` to report the number of vectors in the index.
 - Updated `requirements.txt` with `faiss-cpu` and `numpy`.
+
+### Day 4 — Document store with SQLite and SQLAlchemy
+
+- Added `app/db.py`.
+- Configured a SQLAlchemy engine and session (`SessionLocal`) against a local
+  SQLite database (`codebase_search.db`).
+- Declared the SQLAlchemy `Base` and created all tables on startup via
+  `Base.metadata.create_all`.
+- Added `app/models.py`.
+- Defined the `CodeChunk` ORM model (`code_chunks` table) with `id`, `text`,
+  `file_path`, `language`, and `function_name` columns to store code snippet
+  metadata alongside their vector embeddings.
+- Updated `requirements.txt` with the SQLAlchemy dependency.
 
 ## Running the API
 

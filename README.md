@@ -93,3 +93,37 @@ Then check the health endpoint:
 ```bash
 curl http://127.0.0.1:8000/health
 ```
+
+## Day 5: /index Endpoint (Write Path)
+
+**What was built:** The `/index` POST endpoint, which wires together the embedding
+system, FAISS vector index, and SQLite document store into a single API call.
+
+**How the pipeline works:**
+
+- A user sends a POST request to `/index` with code text and metadata.
+- The text and metadata are saved to SQLite, generating an auto-incrementing ID.
+- The text is converted into a 384-dimensional vector using sentence-transformers.
+- The vector is stored in FAISS under that same SQLite ID.
+- The matching ID is the critical link between the two systems — it's what lets a
+  FAISS search result later be resolved back to its stored code chunk.
+
+**Files changed:**
+
+- `app/main.py` — added the `/index` endpoint, the `IndexRequest` Pydantic model,
+  and a database session dependency (`get_db`).
+
+**Testing done:**
+
+- Tested via the FastAPI `/docs` interactive page.
+- Indexed three code snippets:
+  - `def load_config()` from `src/utils.py` → id: 8
+  - `def connect_to_database()` from `src/db.py` → id: 9
+  - `def calculate_tax()` from `src/finance.py` → id: 10
+- All three returned `200` with `"Indexed successfully"`.
+
+**Errors encountered:**
+
+- Copilot auto-inserted an unnecessary `from torch import chunk` import — removed it.
+- Passed the wrong argument to `add_vector` (`code_chunk.id` twice instead of
+  `vector, code_chunk.id`) — fixed.

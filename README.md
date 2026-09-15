@@ -127,3 +127,36 @@ system, FAISS vector index, and SQLite document store into a single API call.
 - Copilot auto-inserted an unnecessary `from torch import chunk` import — removed it.
 - Passed the wrong argument to `add_vector` (`code_chunk.id` twice instead of
   `vector, code_chunk.id`) — fixed.
+
+## Day 6: /search Endpoint (Read Path)
+
+**What was built:** The `/search` POST endpoint, which completes the core search
+engine. Users can now index code through `/index` and search it by meaning through
+`/search`.
+
+**How the search pipeline works:**
+
+- A user sends a POST request to `/search` with a plain English query and an
+  optional `k` parameter (defaults to 5).
+- The query is converted into a 384-dimensional vector using the same embedding
+  model used for indexing.
+- FAISS searches its index for the `k` nearest vectors and returns their IDs and
+  similarity scores.
+- Each ID is looked up in SQLite to retrieve the actual code text, file path,
+  language, and function name.
+- Results are returned ranked by similarity score, best match first.
+- Scores are rounded to 3 decimal places for readability.
+
+**Files changed:**
+
+- `app/main.py` — added the `/search` POST endpoint, the `SearchRequest` model
+  (query + configurable `k`), and the `SearchResult` response model.
+
+**Testing done:**
+
+- Indexed three code snippets: `load_config` (`src/utils.py`),
+  `connect_to_database` (`src/db.py`), and `calculate_tax` (`src/finance.py`).
+- Searched with query: `"open a database connection"` (`k=3`).
+- Results: `connect_to_database` ranked #1 (score 0.466) despite sharing almost no
+  words with the query — confirming the search is matching by meaning, not
+  keywords.

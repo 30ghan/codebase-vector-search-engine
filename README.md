@@ -160,3 +160,112 @@ engine. Users can now index code through `/index` and search it by meaning throu
 - Results: `connect_to_database` ranked #1 (score 0.466) despite sharing almost no
   words with the query — confirming the search is matching by meaning, not
   keywords.
+
+## Day 7: Evaluation + Metrics
+
+**What was built:** An evaluation system that measures four key metrics —
+indexing speed, query latency, Recall@K, and throughput. This turns a subjective
+"it works" into quantifiable numbers, and on its first run it caught a retrieval
+bug that manual spot-checking had missed entirely.
+
+**Files created:**
+
+- `evaluation/dataset.py` — 8 labelled test pairs: code snippets paired with
+  natural language queries that should match them. The queries are deliberately
+  phrased differently from the code (e.g. "encrypt a user password" should match
+  `hash_password`) to test genuine semantic understanding rather than keyword
+  overlap.
+- `evaluation/evaluate.py` — the evaluation runner. It resets the database,
+  indexes the test data, runs every query, and prints a full metrics report:
+  indexing speed (docs/sec), query latency (avg/min/max/p50/p95), Recall@K, and
+  throughput (queries/sec).
+- `debugging_recall.py` — a diagnostic script that prints a per-query HIT/MISS
+  breakdown showing exactly what was returned versus what was expected.
+
+**First evaluation run:**
+
+- Indexing speed: 36 docs/sec (8 documents in 0.222s)
+- Query latency: 8ms average, 11.2ms p95
+- Throughput: 148.7 queries/sec
+- Recall@3: **25%** (2/8 queries found the correct function in the top 3)
+
+**Debugging the low recall:**
+
+A 25% recall looked like a model quality problem, so the obvious conclusion was
+that `all-MiniLM-L6-v2` — a general-purpose sentence model — simply couldn't
+bridge code-specific synonyms like "encrypt" → "hash". Running
+`debugging_recall.py` showed something different:
+
+```
+MISS | Query: encrypt a user password         | Expected: hash_password     | Got: ['connect_to_postgres', ...]
+MISS | Query: send a notification email       | Expected: send_email        | Got: ['hash_password', ...]
+MISS | Query: compute the mean of a list      | Expected: calculate_average | Got: ['send_email', ...]
+MISS | Query: scale an image to dimensions    | Expected: resize_image      | Got: ['calculate_average', ...]
+```
+
+Every miss returned the snippet indexed *immediately before* the expected one.
+That is an off-by-one pattern, not a semantic failure. Two other clues pointed
+the same way: some `k=3` searches returned only 2 results, and the mistakes were
+perfectly consistent rather than fuzzy.
+
+**Root cause:** `add_vector(vector, doc_id)` accepted a `doc_id` but never used
+it. `IndexFlatIP.add()` assigns its own sequential positions (0, 1, 2, …), and
+`search_vectors` returned those positions. `/search` then looked them up as
+SQLite IDs, which start at 1 — so every result was shifted by one, and FAISS
+position 0 matched no database row at all. The ID link described back on Day 5
+was silently broken.
+
+Interpreting one raw FAISS result both ways makes it unambiguous:
+
+```
+Query: 'encrypt a user password'  (expected hash_password)
+  FAISS returned 2  score=0.448  | as POSITION -> hash_password  | as SQLite ID -> connect_to_postgres
+```
+
+The embedding model had ranked the correct function **#1 with a strong score**
+the whole time. The retrieval was working; the lookup was not.
+
+**The fix:** Wrapped the flat index in a FAISS `IndexIDMap` and switched to
+`add_with_ids`, so FAISS stores the real SQLite IDs instead of its own positions:
+
+```python
+index = faiss.IndexIDMap(faiss.IndexFlatIP(embedding_dim))
+
+def add_vector(vector: list[float], doc_id: int) -> None:
+    vec_array = np.array([vector], dtype=np.float32)
+    id_array = np.array([doc_id], dtype=np.int64)
+    index.add_with_ids(vec_array, id_array)
+```
+
+**Results after the fix:**
+
+- Recall@1: **100%** (8/8)
+- Recall@3: **100%** (8/8)
+- Indexing speed: 73.0 docs/sec (8 documents in 0.110s)
+- Query latency: 10.2ms average, 11.4ms p95
+- Throughput: 96.8 queries/sec
+
+Every query now returns its expected function as the top result, including the
+ones that looked like model failures — `all-MiniLM-L6-v2` bridges "encrypt" →
+"hash" and "scale" → "resize" without trouble. Only recall changed
+meaningfully here; the latency and throughput differences are run-to-run noise
+on a dataset this small.
+
+**Improvement paths identified for Days 8-10:**
+
+- Recall is saturated at 100% on 8 well-separated snippets, so the metric can't
+  discriminate yet. The priority is a larger, harder dataset with near-duplicate
+  and adjacent functions before drawing any conclusions about model quality.
+- Enrich indexed text with docstrings, comments, or function signatures to give
+  the model more context than a single line.
+- Re-test a code-trained embedding model (CodeBERT, CodeT5) once the dataset is
+  hard enough for the comparison to mean something.
+- Add hybrid search combining vector similarity with keyword matching as a
+  fallback for exact identifier lookups.
+
+**Why this matters:** Without evaluation, this project was a demo that "seemed to
+work" — the Day 6 manual test passed because the one query tried happened to be
+among the cases the off-by-one didn't visibly break. The first automated run
+exposed a broken ID mapping sitting in the core read path. The lesson wasn't that
+the model was weak; it was that an unmeasured system hides its own bugs, and that
+a suspicious metric deserves a diagnostic before it deserves an explanation.

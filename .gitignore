@@ -218,3 +218,5 @@ __marimo__/
 .streamlit/secrets.toml
 
 *.db
+# FAISS index snapshot (rebuilt from SQLite on startup)
+faiss_index.bin

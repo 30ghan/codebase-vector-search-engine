@@ -92,3 +92,4 @@ def load_index(path: str = INDEX_PATH) -> bool:
     with _lock:
         index = loaded
     return True
+

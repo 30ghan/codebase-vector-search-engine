@@ -1,0 +1,18 @@
+codebase_queries = [
+    {"query": "parse python source code into its functions and classes", "expected_function": "extract_functions"},
+    {"query": "walk through a folder and collect code from every python file", "expected_function": "chunk_directory"},
+    {"query": "read a single source file from disk and split it into pieces", "expected_function": "chunk_file"},
+    {"query": "turn a piece of text into a vector", "expected_function": "compute_embedding"},
+    {"query": "measure how alike two vectors are", "expected_function": "cosine_similarity"},
+    {"query": "find the nearest neighbours of a query vector", "expected_function": "search_vectors"},
+    {"query": "write the vector index to a file on disk", "expected_function": "save_index"},
+    {"query": "restore a previously saved index from a file", "expected_function": "load_index"},
+    {"query": "delete vectors belonging to removed documents", "expected_function": "remove_vectors"},
+    {"query": "throw away the index and start again empty", "expected_function": "reset_index"},
+    {"query": "count how many vectors are stored", "expected_function": "get_index_size"},
+    {"query": "open a database session for a request and close it afterwards", "expected_function": "get_db"},
+    {"query": "check whether the service is up and running", "expected_function": "health_check"},
+    {"query": "index every file in a directory through the api", "expected_function": "index_directory"},
+    {"query": "save a code snippet to the database and add its embedding", "expected_function": "store_code_chunk"},
+    {"query": "database table definition for stored code snippets", "expected_function": "CodeChunk"},
+]

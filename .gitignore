@@ -220,3 +220,7 @@ __marimo__/
 *.db
 # FAISS index snapshot (rebuilt from SQLite on startup)
 faiss_index.bin
+
+# Evaluation scratch data (evaluation/evaluate.py)
+eval_search.db
+evaluation/eval_faiss_index.bin

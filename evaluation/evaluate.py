@@ -1,6 +1,15 @@
+import os
+
+# Point the app at throwaway evaluation copies BEFORE importing anything from
+# app - app.db and app.vector_index read these paths at import time, so setting
+# them later would have no effect and the evaluation would clobber real data.
+EVAL_DIR = os.path.dirname(os.path.abspath(__file__))
+os.environ["DATABASE_PATH"] = os.path.join(EVAL_DIR, "eval_search.db")
+os.environ["FAISS_INDEX_PATH"] = os.path.join(EVAL_DIR, "eval_faiss_index.bin")
+
 import time 
 from app.embeddings import compute_embedding
-from app.vector_index import add_vector, search_vectors, get_index_size
+from app.vector_index import add_vector, search_vectors, get_index_size, reset_index
 from app.db import SessionLocal
 from app.models import CodeChunk
 from evaluation.dataset import test_snippets, test_queries
@@ -64,6 +73,7 @@ def run_evaluation():
     print("=" * 50)
 
     reset_database()
+    reset_index()
 
     index_time = index_test_snippets()
     num_docs = len(test_snippets)

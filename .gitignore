@@ -224,3 +224,7 @@ faiss_index.bin
 # Evaluation scratch data (evaluation/evaluate.py)
 eval_search.db
 evaluation/eval_faiss_index.bin
+
+# Diagnostic scratch data (debugging_recall.py)
+debug_search.db
+debug_faiss_index.bin

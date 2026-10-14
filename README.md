@@ -216,12 +216,13 @@ byte-identical.
   semantic failure. Switching to `IndexIDMap` with `add_with_ids` took Recall@3
   from 25% to 100%; the model had been ranking the right answer first all along.
 - **Three separate bugs all returned `200 []`.** The in-memory FAISS index was
-  lost on every `uvicorn --reload` restart while SQLite kept its rows, a
+  lost on every `uvicorn --reload` restart while SQLite kept its rows; a
   case-sensitive filter made `language="Python"` match nothing where `"python"`
-  matched three, and an empty index produced an empty list under a success status.
-  Fixes: persist the index to disk with a startup rebuild from SQLite whenever the
-  vector and row counts disagree, compare languages case-insensitively, and return
-  `503` with an explanatory message instead of `[]`.
+  matched three; and post-filter starvation (next bullet) hid real matches.
+  Fixes: persist the index to disk with a startup rebuild from SQLite whenever
+  the vector and row counts disagree, compare languages case-insensitively, and
+  return `503` on an empty index instead of `[]`, so a broken index can no
+  longer look like "no matches".
 - **Post-filter starvation.** Filters ran after the vector search over a fixed
   `k * 5` candidate window, so a match ranked below that window was unreachable:
   `k=1` returned nothing while `k=2` returned the result that had existed all
@@ -233,7 +234,7 @@ byte-identical.
   test snippets. Each harness now runs against its own database and index file,
   set before the first `app` import.
 
-Each of these was found by measuring rather than by reading the code — the full
+Most of these were found by measuring rather than by reading the code — the full
 investigation for each is in [DEVLOG.md](DEVLOG.md).
 
 ## Limitations & future work

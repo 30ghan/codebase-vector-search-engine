@@ -1,49 +1,10 @@
-# codebase-vector-search-engine
+# Development Log
 
-Semantic code search engine built with FastAPI, FAISS, and sentence transformers.
-It supports vector-based search over code snippets for fast, relevant retrieval,
-with a focus on a developer-friendly workflow and lightweight embeddings for quick
-experimentation.
+A day-by-day record of how this project was built: what was added each day, the
+bugs hit, how each was diagnosed, and the measurements at each stage. For an
+overview of the project, results, and how to run it, see [README.md](README.md).
 
-## Overview
-
-The project turns code snippets into dense vector embeddings and stores them in a
-FAISS index so they can be searched by meaning rather than exact keywords. A query
-is embedded with the same model and compared against the index to return the most
-similar snippets.
-
-## Tech stack
-
-- **FastAPI** – HTTP API layer
-- **sentence-transformers** (`all-MiniLM-L6-v2`) – 384-dimensional text embeddings
-- **FAISS** (`faiss-cpu`) – vector index and similarity search
-- **NumPy** – array handling for index operations
-- **SQLAlchemy** + **SQLite** – document store for code chunk metadata
-- **Uvicorn** – ASGI server
-
-## Project structure
-
-```
-app/
-  __init__.py
-  main.py           # FastAPI app: /health, /index, /index-directory, /search
-  embeddings.py     # embedding + similarity helpers
-  vector_index.py   # FAISS index: add, search, persist, remove
-  code_parser.py    # ast-based extraction of functions and classes
-  db.py             # SQLAlchemy engine/session setup
-  models.py         # CodeChunk ORM model
-evaluation/
-  dataset.py            # 8 labelled snippet/query pairs
-  evaluate.py           # metrics runner for the synthetic dataset
-  codebase_queries.py   # 16 queries against this project's own source
-  evaluate_codebase.py  # Recall@1/3/5 and MRR on the real codebase
-debugging_recall.py # per-query HIT/MISS diagnostic
-requirements.txt
-```
-
-## Progress log
-
-### Day 1 — FastAPI framework with `/health` endpoint
+## Day 1 — FastAPI framework with `/health` endpoint
 
 - Set up the project skeleton and virtual environment.
 - Added the `app` package and created the FastAPI application in `app/main.py`
@@ -52,7 +13,7 @@ requirements.txt
   liveness check.
 - Captured the environment in `requirements.txt`.
 
-### Day 2 — Embedding system with sentence-transformers
+## Day 2 — Embedding system with sentence-transformers
 
 - Added `app/embeddings.py`.
 - Loaded the `all-MiniLM-L6-v2` sentence-transformers model.
@@ -62,7 +23,7 @@ requirements.txt
   equivalent to cosine similarity for normalized embeddings.
 - Updated `requirements.txt` with the sentence-transformers dependencies.
 
-### Day 3 — FAISS vector index with add and search
+## Day 3 — FAISS vector index with add and search
 
 - Added `app/vector_index.py`.
 - Created a FAISS `IndexFlatIP` index sized to the 384-dimensional embeddings,
@@ -73,7 +34,7 @@ requirements.txt
 - Implemented `get_index_size()` to report the number of vectors in the index.
 - Updated `requirements.txt` with `faiss-cpu` and `numpy`.
 
-### Day 4 — Document store with SQLite and SQLAlchemy
+## Day 4 — Document store with SQLite and SQLAlchemy
 
 - Added `app/db.py`.
 - Configured a SQLAlchemy engine and session (`SessionLocal`) against a local
@@ -86,22 +47,7 @@ requirements.txt
   metadata alongside their vector embeddings.
 - Updated `requirements.txt` with the SQLAlchemy dependency.
 
-## Running the API
-
-```bash
-python -m venv venv
-venv\Scripts\activate        # Windows
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
-
-Then check the health endpoint:
-
-```bash
-curl http://127.0.0.1:8000/health
-```
-
-## Day 5: /index Endpoint (Write Path)
+## Day 5 — /index Endpoint (Write Path)
 
 **What was built:** The `/index` POST endpoint, which wires together the embedding
 system, FAISS vector index, and SQLite document store into a single API call.
@@ -135,7 +81,7 @@ system, FAISS vector index, and SQLite document store into a single API call.
 - Passed the wrong argument to `add_vector` (`code_chunk.id` twice instead of
   `vector, code_chunk.id`) — fixed.
 
-## Day 6: /search Endpoint (Read Path)
+## Day 6 — /search Endpoint (Read Path)
 
 **What was built:** The `/search` POST endpoint, which completes the core search
 engine. Users can now index code through `/index` and search it by meaning through
@@ -168,7 +114,7 @@ engine. Users can now index code through `/index` and search it by meaning throu
   words with the query — confirming the search is matching by meaning, not
   keywords.
 
-## Day 7: Evaluation + Metrics
+## Day 7 — Evaluation + Metrics
 
 **What was built:** An evaluation system that measures four key metrics —
 indexing speed, query latency, Recall@K, and throughput. This turns a subjective
@@ -277,7 +223,7 @@ exposed a broken ID mapping sitting in the core read path. The lesson wasn't tha
 the model was weak; it was that an unmeasured system hides its own bugs, and that
 a suspicious metric deserves a diagnostic before it deserves an explanation.
 
-## Day 8: Code Parsing with Python's `ast`
+## Day 8 — Code Parsing with Python's `ast`
 
 **What was built:** A code parser that reads `.py` files and extracts each
 function and class as its own chunk. Until now every indexed snippet had to be
@@ -328,7 +274,7 @@ persistence, filters, and helper functions to `main.py` and `vector_index.py`.
 `language: "python"` and filters on `.endswith(".py")`. Other languages would need
 a different parser, tree-sitter being the usual choice.
 
-## Day 9: Bulk Indexing, Search Filters, and Persistence
+## Day 9 — Bulk Indexing, Search Filters, and Persistence
 
 Shipped in two parts.
 
@@ -429,7 +375,7 @@ from the client, a wrong filter and an empty index look the same. The Day 7
 pattern repeated: the system was silently wrong in its core read path, and only
 reproducing each case separately separated the three causes.
 
-## Day 10: Real-Codebase Evaluation
+## Day 10 — Real-Codebase Evaluation
 
 **What was built:** A second evaluation harness that measures retrieval against
 this project's own source instead of hand-written snippets, reporting Recall@1/3/5

@@ -1,3 +1,13 @@
+import os
+
+# This script deletes every row before re-indexing, so point the app at its own
+# scratch files BEFORE importing anything from app - app.db and app.vector_index
+# read these paths at import time, so setting them later would have no effect and
+# the run would wipe the real indexed codebase.
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+os.environ["DATABASE_PATH"] = os.path.join(PROJECT_ROOT, "debug_search.db")
+os.environ["FAISS_INDEX_PATH"] = os.path.join(PROJECT_ROOT, "debug_faiss_index.bin")
+
 from app.embeddings import compute_embedding
 from app.vector_index import add_vector, search_vectors, get_index_size
 from app.db import SessionLocal
